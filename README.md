@@ -1,4 +1,4 @@
-# CFS Scheduler Simulation
+v# CFS Scheduler Simulation
 
 A C++ simulation of two CPU scheduling policies — the Linux **Completely
 Fair Scheduler (CFS)** and **Round Robin** — implemented behind a common
@@ -139,31 +139,6 @@ fairness (CFS).
   context switching. This project demonstrates the scheduling *algorithm*
   at the single-runqueue level, not a kernel subsystem.
 
-## Bug Fixes Made During This Pass
-
-- **Sleeper fairness was missing entirely.** The original
-  `handleIoBoundProcess` charged the full I/O wait time to `vruntime`,
-  which effectively starved I/O-bound processes on every wake-up. Fixed by
-  clamping to the runqueue minimum before charging only the post-wake CPU
-  portion (see `src/ioBoundProcessExecution.cpp`).
-- **Memory leaks.** `getProcessFromJson` allocates `Process*` with `new`
-  and nothing ever freed them; `cfs::createProcessLog` does the same for
-  `ProcessLog*`. Fixed with explicit `delete` loops in `main.cpp` at the
-  point where ownership ends, since the rest of the codebase uses raw
-  pointers throughout and a full smart-pointer rewrite was out of scope
-  for this change.
-- **`CMakeLists.txt` wasn't actually setting the C++ standard.**
-  `set(CMAKE_CXX_STANDARD, 14)` — the comma made CMake set a variable
-  literally named `CMAKE_CXX_STANDARD,` (with a trailing comma) rather
-  than `CMAKE_CXX_STANDARD`. Similarly, `set(CMAKE_CXX_STANDARD_REQUIRED)`
-  set it to an empty value rather than `ON`. Both were silent no-ops; it
-  happened to compile anyway because the default compiler standard was new
-  enough. Fixed in the updated `CMakeLists.txt`.
-- **Missing `#include`s relying on transitive inclusion.**
-  `cpuBoundProcessExecution.cpp` used `std::min` without `<algorithm>`;
-  `ioBoundProcessExecution.cpp` used `std::chrono` types without
-  `<chrono>` (relying on `<thread>` to pull it in, which isn't
-  guaranteed by the standard). Both fixed with explicit includes.
 
 ## Testing
 
