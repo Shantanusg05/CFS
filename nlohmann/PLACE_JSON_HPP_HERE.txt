@@ -1,0 +1,12 @@
+Drop your existing `json.hpp` (nlohmann/json, single-header version) into
+this folder before building.
+
+This is unmodified third-party code, so it wasn't worth reproducing here —
+just copy `nlohmann/json.hpp` from your current local clone into this same
+path in the merged project. Everything in src/ already expects it at
+`../nlohmann/json.hpp` relative to src/, matching your original layout.
+
+If you don't have it locally for some reason, grab the single-header
+release from: https://github.com/nlohmann/json/releases (download
+`json.hpp` from the "Single header" assets and place it here, file named
+exactly `json.hpp`).
