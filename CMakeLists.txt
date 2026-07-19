@@ -4,7 +4,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "make a different build directory in the project and use cmake .. in build directory")
 endif()
 
-project(cfs_schedular)
+project(cfs_scheduler)
 
 # CHANGED — both lines below were silent no-ops in the original file:
 #   set(CMAKE_CXX_STANDARD, 14)       CMake does not treat commas as
