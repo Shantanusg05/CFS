@@ -1,13 +1,14 @@
-#ifndef CPU_BOUND_PROCESS_EXECUTION_HPP
-#define CPU_BOUND_PROCESS_EXECUTION_HPP
+#ifndef IO_BOUND_PROCESS_EXECUTION_HPP
+#define IO_BOUND_PROCESS_EXECUTION_HPP
 
 #include "processService.hpp"
 #include "queueService.hpp"
+#include "cpuBoundProcessExecution.hpp"
 
-#define CPU_INSTRUCTIONS_IN_MS 200
 
-double weightFunction(int priority);
+constexpr int kIoCpuCreditMs = 1;
 
-void executeCpuBoundProcess(Process* process, int timeSlice, QueueService& q);
 
-#endif // CPU_BOUND_PROCESS_EXECUTION_HPP
+void handleIoBoundProcess(Process* process, int ioWaitTime, QueueService& q);
+
+#endif // IO_BOUND_PROCESS_EXECUTION_HPP
