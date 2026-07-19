@@ -26,6 +26,7 @@ struct Process {
     int priority;
     ProcessState processState;
     PROCESS_NATURE processNature;
+    long long ioWakeTime = 0;
 };
 
 PROCESS_NATURE stringToProcessNature(const std::string& nature);
