@@ -1,5 +1,5 @@
 #include <vector>
-#include <chrono>
+#include <algorithm>
 #include "processService.hpp"
 #include "processLog.hpp"
 #include "queueService.hpp"
@@ -8,11 +8,9 @@
 #include "cfs.hpp"
 
 namespace {
-// CHANGED: pulled the magic numbers 1 and 10 out of schedule() into named
-// constants — same values, just named, so the meaning isn't buried in the
-// call site.
 constexpr int kCpuTimeSliceMs = 1;
 constexpr int kIoWaitTimeMs = 10;
+constexpr long long kNsPerMs = 1'000'000LL;
 }  // namespace
 
 void cfs::createProcessLog(std::vector<ProcessLog *> &logs, long long startTime, long long endTime, int pid)
@@ -29,44 +27,71 @@ std::vector<ProcessLog *> cfs::schedule(std::vector<Process *> processList)
     QueueService queue;
     std::vector<ProcessLog *> logs;
 
+    std::vector<Process*> ioWaitList;
+    long long currentTime = 0;
+
     for (auto process : processList)
     {
         queue.push_element(process);
     }
 
-    while (!queue.is_empty())
+    while (!queue.is_empty() || !ioWaitList.empty())
     {
+        // Wake anyone whose I/O wait has completed by now -- the
+        // discrete-event equivalent of an interrupt handler moving a
+        // blocked task back onto the runqueue.
+        for (size_t i = 0; i < ioWaitList.size(); )
+        {
+            if (ioWaitList[i]->ioWakeTime <= currentTime)
+            {
+                const long long sliceStart = currentTime;
+                handleIoBoundProcess(ioWaitList[i], kIoWaitTimeMs, queue);
+                currentTime += static_cast<long long>(kIoCpuCreditMs) * kNsPerMs;
+                createProcessLog(logs, sliceStart, currentTime, ioWaitList[i]->pid);
+
+                ioWaitList[i] = ioWaitList.back();
+                ioWaitList.pop_back();
+            }
+            else
+            {
+                ++i;
+            }
+        }
+
+        if (queue.is_empty())
+        {
+            if (ioWaitList.empty())
+            {
+                break;
+            }
+            // Nothing runnable right now -- jump the clock straight to the
+            // next I/O completion instead of idling/polling.
+            currentTime = std::min_element(ioWaitList.begin(), ioWaitList.end(),
+                [](Process* a, Process* b) { return a->ioWakeTime < b->ioWakeTime; })->ioWakeTime;
+            continue;
+        }
+
         Process *process = queue.top_element();
         queue.pop_element();
 
-        // CHANGED — fix: a process pushed with cpu_burst_time <= 0 (e.g. a
-        // zero-burst input) would otherwise still get dispatched once and
-        // logged with a no-op (zero-work) entry, since
-        // executeCpuBoundProcess only prevents *requeueing*, not the
-        // initial dispatch+log. Skip it outright instead.
         if (process->cpu_burst_time <= 0)
         {
             continue;
         }
 
-        auto startTime = std::chrono::steady_clock::now();
-
         if (process->processNature == PROCESS_NATURE::CPU_BOUND)
         {
+            const long long sliceStart = currentTime;
             executeCpuBoundProcess(process, kCpuTimeSliceMs, queue);
+            currentTime += static_cast<long long>(kCpuTimeSliceMs) * kNsPerMs;
+            createProcessLog(logs, sliceStart, currentTime, process->pid);
         }
         else
         {
-            handleIoBoundProcess(process, kIoWaitTimeMs, queue);
+            
+            process->ioWakeTime = currentTime + static_cast<long long>(kIoWaitTimeMs) * kNsPerMs;
+            ioWaitList.push_back(process);
         }
-
-        // Record end time in nanoseconds
-        auto endTime = std::chrono::steady_clock::now();
-
-        long long startTimeMs = std::chrono::duration_cast<std::chrono::nanoseconds>(startTime.time_since_epoch()).count();
-        long long endTimeMs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime.time_since_epoch()).count();
-
-        createProcessLog(logs, startTimeMs, endTimeMs, process->pid);
     }
 
     return logs;
