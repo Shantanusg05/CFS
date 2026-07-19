@@ -13,8 +13,13 @@
 int main(int argc, char* argv[]) {
     // Usage: ./cfs_scheduler [cfs|rr]
     const std::string algo = (argc > 1) ? argv[1] : "cfs";
-
-    std::vector<Process*> processes = getProcessFromJson("../resources/process.json");
+    std::vector<Process*> processes;
+    try {
+    processes = getProcessFromJson("../resources/process.json");
+} catch (const std::exception& e) {
+    std::cerr << "Failed to load process list: " << e.what() << "\n";
+    return 1;
+}
 
     std::unique_ptr<Scheduler> scheduler;
     if (algo == "rr") {
@@ -26,6 +31,10 @@ int main(int argc, char* argv[]) {
     std::vector<ProcessLog*> logs = scheduler->schedule(processes);
 
     std::ofstream outFile("../process_schedule.csv");
+    if (!outFile) {
+    std::cerr << "Failed to open process_schedule.csv for writing\n";
+    return 1;
+}
     outFile << "pid,start_time,end_time" << std::endl;
     for (auto processLog : logs) {
         outFile << processLog->pid << ","
