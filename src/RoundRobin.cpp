@@ -31,17 +31,8 @@ std::vector<ProcessLog*> RoundRobin::schedule(std::vector<Process*> processList)
     while (!runqueue.empty() || !ioWaitList.empty()) {
         for (size_t i = 0; i < ioWaitList.size(); ) {
             if (ioWaitList[i]->ioWakeTime <= currentTime) {
-                Process* process = ioWaitList[i];
-                const long long sliceStart = currentTime;
-                const int executedTime = std::min(quantumMs, process->cpu_burst_time);
-                process->cpu_burst_time -= executedTime;
-                currentTime += static_cast<long long>(executedTime) * kNsPerMs;
-                createProcessLog(logs, sliceStart, currentTime, process->pid);
-
-                if (process->cpu_burst_time > 0) {
-                    runqueue.push(process);
-                }
-
+                runqueue.push(ioWaitList[i]); 
+        
                 ioWaitList[i] = ioWaitList.back();
                 ioWaitList.pop_back();
             } else {
