@@ -6,30 +6,15 @@ endif()
 
 project(cfs_scheduler)
 
-# CHANGED — both lines below were silent no-ops in the original file:
-#   set(CMAKE_CXX_STANDARD, 14)       CMake does not treat commas as
-#                                      argument separators (only whitespace/
-#                                      semicolons), so this actually set a
-#                                      variable literally named
-#                                      "CMAKE_CXX_STANDARD," (with a trailing
-#                                      comma) to "14" — not what was intended.
-#   set(CMAKE_CXX_STANDARD_REQUIRED)  This sets the variable to an empty
-#                                      value, not ON, so it had no effect.
-# Net effect: the compiler standard flag was never actually being passed.
-# It happened to still compile because the compiler's default standard was
-# new enough, but the project wasn't getting what it asked for.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_compile_options(-Wall -Wextra)
 
-file(GLOB SOURCES
+file(GLOB SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
 )
 
-# CHANGED: split into a library (scheduler_core) + a thin main.cpp
-# executable, instead of compiling everything (including main.cpp) into one
-# target. This lets the test executable link against the same scheduler
-# code without pulling in (and conflicting with) main()'s entry point.
 add_library(scheduler_core ${SOURCES})
 target_include_directories(scheduler_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
